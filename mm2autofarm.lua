@@ -1,7 +1,16 @@
 -- ==================== ПРОСТОЙ АВТОХОП ДЛЯ MM2 ====================
--- Версия 2.0 - БЕЗ MM2 для теста
+-- Версия 2.1 - Фикс queueonteleport
 
-local VERSION = "2.0-ТЕСТ"
+local VERSION = "2.1-ФИКС"
+
+-- САМОЕ ПЕРВОЕ УВЕДОМЛЕНИЕ (до всех проверок!)
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "🔵 QUEUE РАБОТАЕТ!",
+        Text = "Версия: " .. VERSION,
+        Duration = 10,
+    })
+end)
 
 -- ОЧИСТКА СТАРЫХ ДАННЫХ
 _G.AutoHopRunning = nil
@@ -48,10 +57,10 @@ end
 local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_teleport)
 
 -- ==================== СТАРТ ====================
-notify("🟢 АВТОХОП v" .. VERSION, "Скрипт запущен!")
+notify("🟢 v" .. VERSION, "Автохоп запущен!")
 notify("🌐 JobId", string.sub(game.JobId, 1, 8) .. "...")
 wait(1)
-notify("📋 Версия", VERSION .. " (БЕЗ MM2)")
+notify("📋 Тест", "БЕЗ MM2, queue фикс")
 
 -- Ждём персонажа
 if not player.Character then
@@ -96,14 +105,32 @@ spawn(function()
     notify("🔄 ХОП", "Меняю сервер...")
     
     -- Ставим скрипт в очередь для следующего сервера
+    notify("📋 Queue", "Проверка поддержки...")
+    
     if queueFunc then
+        notify("✅ Queue", "Поддерживается!")
+        
+        -- Пробуем все возможные варианты
         pcall(function()
-            -- Увеличиваем задержку до 15 секунд!
-            queueFunc('wait(15); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
+            queueFunc('wait(5); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
         end)
-        notify("✅ Очередь", "Скрипт в очереди (старт через 15с)!")
+        
+        pcall(function()
+            if queueonteleport then
+                queueonteleport('wait(5); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
+            end
+        end)
+        
+        pcall(function()
+            if queue_on_teleport then
+                queue_on_teleport('wait(5); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
+            end
+        end)
+        
+        notify("✅ Очередь", "Скрипт в очереди (x3)!")
     else
-        notify("⚠️ Очередь", "Queue не поддерживается")
+        notify("❌ Очередь", "Queue НЕ поддерживается!")
+        notify("⚠️ Внимание", "Автозапуск не будет работать!")
     end
     
     wait(2)
