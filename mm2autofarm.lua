@@ -16,6 +16,7 @@ local PLACE_ID = 142823291  -- Murder Mystery 2
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
 local AUTOHOP_URL = "https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"
 local WORK_TIME = 30  -- 30 секунд перед хопом
+local LOAD_MM2 = false  -- ВРЕМЕННО ВЫКЛЮЧАЕМ MM2 для теста
 
 -- Сервисы
 local Players = game:GetService("Players")
@@ -51,20 +52,24 @@ end
 wait(5)
 notify("✅ Загружен", "Персонаж готов!")
 
--- Загружаем MM2 скрипт в фоне
-notify("📥 MM2", "Загружаю MM2 скрипт...")
-spawn(function()
-    wait(3) -- Даём игре стабилизироваться
-    pcall(function()
-        loadstring(game:HttpGet(SCRIPT_URL))()
+-- Загружаем MM2 скрипт в фоне (если включено)
+if LOAD_MM2 then
+    notify("📥 MM2", "Загружаю MM2 скрипт...")
+    spawn(function()
+        wait(3)
+        pcall(function()
+            loadstring(game:HttpGet(SCRIPT_URL))()
+        end)
+        wait(5)
+        notify("✅ MM2", "MM2 скрипт загружен!")
     end)
-    wait(5)
-    notify("✅ MM2", "MM2 скрипт загружен!")
-end)
+else
+    notify("⚠️ MM2", "MM2 выключен для теста!")
+end
 
 -- Запускаем таймер автохопа
 spawn(function()
-    wait(10) -- Даём MM2 полностью загрузиться
+    wait(5) -- Уменьшаем ожидание т.к. MM2 выключен
     
     notify("⏰ ТАЙМЕР", WORK_TIME .. " секунд до хопа")
     
@@ -82,9 +87,10 @@ spawn(function()
     -- Ставим скрипт в очередь для следующего сервера
     if queueFunc then
         pcall(function()
-            queueFunc('wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
+            -- Увеличиваем задержку до 15 секунд!
+            queueFunc('wait(15); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
         end)
-        notify("✅ Очередь", "Скрипт в очереди!")
+        notify("✅ Очередь", "Скрипт в очереди (старт через 15с)!")
     else
         notify("⚠️ Очередь", "Queue не поддерживается")
     end
