@@ -18,9 +18,118 @@ local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_
     print("[АВТОХОП] Queue не поддерживается на этом эксплойте!") 
 end
 
+-- ==================== GUI ДЕБАГГЕР ДЛЯ МОБИЛЬНОГО ====================
+local logGui = Instance.new("ScreenGui")
+logGui.Name = "AutoHopDebugger"
+logGui.ResetOnSpawn = false
+logGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local logFrame = Instance.new("Frame")
+logFrame.Size = UDim2.new(0, 380, 0, 450)
+logFrame.Position = UDim2.new(0, 10, 0, 10)
+logFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+logFrame.BackgroundTransparency = 0.3
+logFrame.BorderSizePixel = 2
+logFrame.BorderColor3 = Color3.fromRGB(0, 255, 0)
+logFrame.Parent = logGui
+
+local logTitle = Instance.new("TextLabel")
+logTitle.Size = UDim2.new(0.6, 0, 0, 30)
+logTitle.Position = UDim2.new(0, 0, 0, 0)
+logTitle.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+logTitle.BorderSizePixel = 0
+logTitle.Text = "🔄 АВТОХОП ДЕБАГГЕР"
+logTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+logTitle.TextSize = 14
+logTitle.Font = Enum.Font.GothamBold
+logTitle.Parent = logFrame
+
+local hopButton = Instance.new("TextButton")
+hopButton.Size = UDim2.new(0.4, -5, 0, 30)
+hopButton.Position = UDim2.new(0.6, 5, 0, 0)
+hopButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+hopButton.BorderSizePixel = 0
+hopButton.Text = "🚀 ХОП СЕЙЧАС"
+hopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+hopButton.TextSize = 12
+hopButton.Font = Enum.Font.GothamBold
+hopButton.Parent = logFrame
+
+local logScroll = Instance.new("ScrollingFrame")
+logScroll.Size = UDim2.new(1, -10, 1, -40)
+logScroll.Position = UDim2.new(0, 5, 0, 35)
+logScroll.BackgroundTransparency = 1
+logScroll.BorderSizePixel = 0
+logScroll.ScrollBarThickness = 6
+logScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+logScroll.Parent = logFrame
+
+local logText = Instance.new("TextLabel")
+logText.Size = UDim2.new(1, -10, 1, 0)
+logText.Position = UDim2.new(0, 5, 0, 0)
+logText.BackgroundTransparency = 1
+logText.Text = ""
+logText.TextColor3 = Color3.fromRGB(0, 255, 0)
+logText.TextSize = 12
+logText.Font = Enum.Font.Code
+logText.TextXAlignment = Enum.TextXAlignment.Left
+logText.TextYAlignment = Enum.TextYAlignment.Top
+logText.TextWrapped = true
+logText.Parent = logScroll
+
+-- Делаем GUI перетаскиваемым
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+logTitle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = logFrame.Position
+    end
+end)
+
+logTitle.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        logFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+logGui.Parent = game:GetService("CoreGui")
+
+local logLines = {}
+local MAX_LOG_LINES = 50
+
 -- ==================== ЛОГИРОВАНИЕ ====================
 local function log(msg)
-    print("[АВТОХОП] " .. msg)
+    local timestamp = os.date("%H:%M:%S")
+    local fullMsg = "[" .. timestamp .. "] " .. msg
+    print(fullMsg)
+    
+    table.insert(logLines, fullMsg)
+    if #logLines > MAX_LOG_LINES then
+        table.remove(logLines, 1)
+    end
+    
+    logText.Text = table.concat(logLines, "\n")
+    
+    -- Автопрокрутка вниз
+    task.wait()
+    logScroll.CanvasPosition = Vector2.new(0, logText.TextBounds.Y)
+    logScroll.CanvasSize = UDim2.new(0, 0, 0, logText.TextBounds.Y + 10)
 end
 
 -- ==================== ЗАГРУЗКА ОСНОВНОГО СКРИПТА ====================
@@ -47,7 +156,14 @@ end
 
 -- ==================== СМЕНА СЕРВЕРА ====================
 local function serverHop()
-    log("Начинаю поиск нового сервера...")
+    log("🔄 Начинаю поиск нового сервера...")
+    log("📡 Проверяю httprequest...")
+    
+    if not httprequest then
+        log("❌ ОШИБКА: httprequest не работает!")
+        log("💡 JJSploit Mobile может не поддерживать HTTP!")
+        return
+    end
     
     local cursor = ""
     local hopped = false
@@ -56,6 +172,7 @@ local function serverHop()
     
     while not hopped and attempts < MAX_ATTEMPTS do
         attempts = attempts + 1
+        log("🔍 Попытка " .. attempts .. "/" .. MAX_ATTEMPTS)
         
         local url = string.format(
             "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s",
@@ -63,62 +180,104 @@ local function serverHop()
             cursor ~= "" and "&cursor=" .. cursor or ""
         )
         
+        log("📡 Отправляю HTTP запрос...")
         local success, response = pcall(function()
             return httprequest({Url = url, Method = "GET"})
         end)
         
-        if not success or not response or not response.Body then
-            log("Ошибка HTTP запроса, попытка " .. attempts .. "/" .. MAX_ATTEMPTS)
+        if not success then
+            log("❌ Ошибка HTTP: " .. tostring(response))
             task.wait(3)
             continue
         end
         
+        if not response then
+            log("❌ Пустой ответ от сервера")
+            task.wait(3)
+            continue
+        end
+        
+        if not response.Body then
+            log("❌ Ответ без Body")
+            log("📋 Response тип: " .. type(response))
+            task.wait(3)
+            continue
+        end
+        
+        log("✅ HTTP ответ получен!")
+        
+        log("📝 Парсинг JSON...")
         local bodySuccess, body = pcall(function() 
             return HttpService:JSONDecode(response.Body) 
         end)
         
-        if bodySuccess and body and body.data then
-            local servers = {}
-            
-            -- Собираем подходящие сервера
-            for _, server in pairs(body.data) do
-                if server.id ~= game.JobId 
-                    and server.playing >= MIN_PLAYERS 
-                    and server.playing <= MAX_PLAYERS then
-                    table.insert(servers, server)
-                end
+        if not bodySuccess then
+            log("❌ Ошибка парсинга JSON: " .. tostring(body))
+            task.wait(3)
+            cursor = ""
+            continue
+        end
+        
+        if not body or not body.data then
+            log("❌ Нет данных в ответе")
+            task.wait(3)
+            cursor = ""
+            continue
+        end
+        
+        log("✅ JSON распарсен! Серверов на странице: " .. #body.data)
+        
+        local servers = {}
+        local totalChecked = 0
+        
+        -- Собираем подходящие сервера
+        for _, server in pairs(body.data) do
+            totalChecked = totalChecked + 1
+            if server.id ~= game.JobId 
+                and server.playing >= MIN_PLAYERS 
+                and server.playing <= MAX_PLAYERS then
+                table.insert(servers, server)
             end
-            
-            if #servers > 0 then
-                log("Найдено " .. #servers .. " подходящих серверов")
+        end
+        
+        log("🔍 Проверено: " .. totalChecked .. " серверов")
+        log("✅ Подходит: " .. #servers .. " серверов")
+        
+        if #servers > 0 then
+            -- Пробуем телепортироваться
+            for i, selected in ipairs(servers) do
+                local playing = selected.playing or "?"
+                local maxP = selected.maxPlayers or "?"
+                log("🎯 Попытка " .. i .. "/" .. #servers)
+                log("📊 Сервер: " .. playing .. "/" .. maxP .. " игроков")
                 
-                -- Пробуем телепортироваться
-                for _, selected in ipairs(servers) do
-                    log("Телепорт на сервер: " .. selected.playing .. "/" .. selected.maxPlayers .. " игроков")
-                    
-                    -- КЛЮЧЕВОЙ МОМЕНТ: Ставим НАШ автохоп скрипт в очередь для следующего сервера
-                    -- Это обеспечит автоматический запуск на новом сервере
-                    local queueCode = 'wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()'
-                    queueFunc(queueCode)
-                    log("🔄 Автохоп поставлен в очередь для следующего сервера")
-                    
-                    local tpSuccess, tpErr = pcall(function()
-                        TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
-                    end)
-                    
-                    if tpSuccess then
-                        log("✅ Телепорт начат! Увидимся на новом сервере...")
-                        hopped = true
-                        task.wait(10)
-                        break
-                    else
-                        log("❌ Ошибка телепорта: " .. tostring(tpErr))
-                        task.wait(2)
-                    end
+                -- КЛЮЧЕВОЙ МОМЕНТ: Ставим НАШ автохоп скрипт в очередь для следующего сервера
+                log("📋 Ставлю скрипт в очередь...")
+                local queueCode = 'wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()'
+                queueFunc(queueCode)
+                log("✅ Скрипт в очереди!")
+                
+                log("🚀 Запускаю телепорт...")
+                local tpSuccess, tpErr = pcall(function()
+                    TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
+                end)
+                
+                if tpSuccess then
+                    log("✅ Телепорт начат!")
+                    log("👋 Увидимся на новом сервере...")
+                    hopped = true
+                    task.wait(10)
+                    break
+                else
+                    log("❌ Ошибка телепорта: " .. tostring(tpErr))
+                    log("⏭️  Пробую следующий сервер...")
+                    task.wait(2)
                 end
-            else
-                log("Нет подходящих серверов на этой странице")
             end
+        else
+            log("⚠️  Нет подходящих серверов на странице")
+            log("💡 MIN_PLAYERS: " .. MIN_PLAYERS .. ", MAX_PLAYERS: " .. MAX_PLAYERS)
+        end
             
             -- Переходим к следующей странице
             if body.nextPageCursor and not hopped then
@@ -143,6 +302,59 @@ local function serverHop()
     end
 end
 
+-- ==================== КНОПКА РУЧНОГО ХОПА ====================
+local manualHopEnabled = true
+hopButton.MouseButton1Click:Connect(function()
+    if manualHopEnabled then
+        manualHopEnabled = false
+        hopButton.Text = "⏳ ЖДУ..."
+        hopButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        log("🎮 РУЧНОЙ ХОП ЗАПУЩЕН!")
+        task.spawn(function()
+            serverHop()
+            task.wait(5)
+            manualHopEnabled = true
+            hopButton.Text = "🚀 ХОП СЕЙЧАС"
+            hopButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+        end)
+    end
+end)
+
+-- ==================== ПРОВЕРКА ФУНКЦИЙ ====================
+local function checkFunctions()
+    log("🔍 Проверка поддержки функций...")
+    
+    -- Проверка httprequest
+    if httprequest then
+        log("✅ httprequest поддерживается")
+    else
+        log("❌ httprequest НЕ поддерживается!")
+        log("⚠️  Автохоп не будет работать!")
+    end
+    
+    -- Проверка queueonteleport
+    if queueonteleport or queue_on_teleport then
+        log("✅ queueonteleport поддерживается")
+    else
+        log("⚠️  queueonteleport НЕ поддерживается!")
+        log("⚠️  Автозапуск на новом сервере может не работать!")
+    end
+    
+    -- Проверка TeleportService
+    local tpTest = pcall(function()
+        return TeleportService:GetTeleportSetting("test")
+    end)
+    if tpTest then
+        log("✅ TeleportService доступен")
+    else
+        log("⚠️  TeleportService может быть ограничен")
+    end
+    
+    log("🎮 Текущий JobId: " .. tostring(game.JobId))
+    log("👥 Игроков на сервере: " .. #Players:GetPlayers())
+    log("════════════════════════════════════════")
+end
+
 -- ==================== ГЛАВНЫЙ ЦИКЛ ====================
 log("════════════════════════════════════════")
 log("  АВТОМАТИЧЕСКИЙ СЕРВЕР-ХОППЕР")
@@ -152,6 +364,8 @@ log("⏱️  Время работы: " .. WORK_TIME .. " секунд")
 log("🎮 Place ID: " .. PLACE_ID)
 log("📱 Эксплойт: JJSploit Mobile")
 log("════════════════════════════════════════")
+
+checkFunctions()
 
 -- Ждем полной загрузки персонажа
 if not player.Character then
