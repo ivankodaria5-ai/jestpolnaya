@@ -1,6 +1,7 @@
 -- ==================== КОНФИГУРАЦИЯ ====================
 local PLACE_ID = 142823291  -- Murder Mystery 2 Place ID
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
+local AUTOHOP_URL = "https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"
 local WORK_TIME = 60  -- Сколько секунд работать перед сменой сервера (1 минута)
 local MIN_PLAYERS = 5  -- Минимум игроков на сервере
 local MAX_PLAYERS = 12  -- Максимум игроков на сервере
@@ -25,15 +26,23 @@ end
 -- ==================== ЗАГРУЗКА ОСНОВНОГО СКРИПТА ====================
 local function loadMainScript()
     log("Загружаю Murder Mystery 2 скрипт...")
-    local success, err = pcall(function()
-        loadstring(game:HttpGet(SCRIPT_URL))()
+    
+    -- ВАЖНО: Запускаем скрипт АСИНХРОННО, чтобы он не блокировал автохоп
+    task.spawn(function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet(SCRIPT_URL))()
+        end)
+        
+        if success then
+            log("✅ Скрипт Murder Mystery 2 загружен!")
+        else
+            log("❌ Ошибка загрузки: " .. tostring(err))
+        end
     end)
     
-    if success then
-        log("✅ Скрипт Murder Mystery 2 загружен!")
-    else
-        log("❌ Ошибка загрузки: " .. tostring(err))
-    end
+    -- Даем скрипту время загрузиться
+    task.wait(3)
+    log("✅ Основной скрипт запущен в фоне!")
 end
 
 -- ==================== СМЕНА СЕРВЕРА ====================
@@ -87,8 +96,11 @@ local function serverHop()
                 for _, selected in ipairs(servers) do
                     log("Телепорт на сервер: " .. selected.playing .. "/" .. selected.maxPlayers .. " игроков")
                     
-                    -- КЛЮЧЕВОЙ МОМЕНТ: Ставим скрипт в очередь для следующего сервера
-                    queueFunc('wait(2); loadstring(game:HttpGet("' .. SCRIPT_URL .. '"))()')
+                    -- КЛЮЧЕВОЙ МОМЕНТ: Ставим НАШ автохоп скрипт в очередь для следующего сервера
+                    -- Это обеспечит автоматический запуск на новом сервере
+                    local queueCode = 'wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()'
+                    queueFunc(queueCode)
+                    log("🔄 Автохоп поставлен в очередь для следующего сервера")
                     
                     local tpSuccess, tpErr = pcall(function()
                         TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
@@ -150,9 +162,17 @@ task.wait(2)
 -- Загружаем основной скрипт
 loadMainScript()
 
--- Ждем указанное время
+-- Ждем указанное время с отчетом каждые 10 секунд
 log("⏳ Работаю " .. WORK_TIME .. " секунд перед сменой сервера...")
-task.wait(WORK_TIME)
+local elapsed = 0
+while elapsed < WORK_TIME do
+    task.wait(10)
+    elapsed = elapsed + 10
+    if elapsed < WORK_TIME then
+        local remaining = WORK_TIME - elapsed
+        log("⏱️  Осталось " .. remaining .. " секунд до смены сервера...")
+    end
+end
 
 -- Меняем сервер
 log("⏰ Время вышло! Меняю сервер...")
