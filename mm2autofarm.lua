@@ -181,19 +181,59 @@ local function serverHop()
                     log("🌐 JobId сервера: " .. tostring(selected.id))
                     log("🎮 Текущий JobId: " .. tostring(game.JobId))
                     
-                    local tpSuccess, tpErr = pcall(function()
+                    -- Метод 1: TeleportToPlaceInstance (обычный)
+                    log("🔄 Метод 1: TeleportToPlaceInstance...")
+                    local tpSuccess1, tpErr1 = pcall(function()
                         TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
                     end)
                     
-                    if tpSuccess then
-                        log("✅ Телепорт начат!")
+                    if tpSuccess1 then
+                        log("✅ Метод 1 сработал!")
                         notify("✅ Успех", "Телепортируюсь...")
                         hopped = true
                         wait(10)
                         break
                     else
-                        log("❌ Ошибка телепорта: " .. tostring(tpErr))
-                        notify("❌ Ошибка ТП", tostring(tpErr))
+                        log("❌ Метод 1 не сработал: " .. tostring(tpErr1))
+                        notify("⚠️ Метод 1", "Неудача, пробую метод 2...")
+                    end
+                    
+                    -- Метод 2: TeleportToPlaceInstance с options
+                    log("🔄 Метод 2: С TeleportOptions...")
+                    wait(1)
+                    local tpSuccess2, tpErr2 = pcall(function()
+                        local options = Instance.new("TeleportOptions")
+                        options.ServerInstanceId = selected.id
+                        TeleportService:TeleportAsync(PLACE_ID, {player}, options)
+                    end)
+                    
+                    if tpSuccess2 then
+                        log("✅ Метод 2 сработал!")
+                        notify("✅ Успех", "Телепортируюсь (метод 2)...")
+                        hopped = true
+                        wait(10)
+                        break
+                    else
+                        log("❌ Метод 2 не сработал: " .. tostring(tpErr2))
+                        notify("⚠️ Метод 2", "Неудача, пробую метод 3...")
+                    end
+                    
+                    -- Метод 3: Обычный Teleport (случайный сервер)
+                    log("🔄 Метод 3: Обычный Teleport...")
+                    wait(1)
+                    local tpSuccess3, tpErr3 = pcall(function()
+                        TeleportService:Teleport(PLACE_ID, player)
+                    end)
+                    
+                    if tpSuccess3 then
+                        log("✅ Метод 3 сработал!")
+                        notify("✅ Успех", "Телепортируюсь (случайный сервер)...")
+                        hopped = true
+                        wait(10)
+                        break
+                    else
+                        log("❌ Метод 3 не сработал: " .. tostring(tpErr3))
+                        notify("❌ Все методы", "Телепорт заблокирован :(")
                         wait(2)
                     end
                 else
