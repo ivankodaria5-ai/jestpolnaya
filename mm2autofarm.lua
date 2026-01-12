@@ -5,7 +5,7 @@ local success, error = pcall(function()
 local PLACE_ID = 142823291  -- Murder Mystery 2 Place ID
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
 local AUTOHOP_URL = "https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"
-local WORK_TIME = 60  -- Сколько секунд работать перед сменой сервера (1 минута)
+local WORK_TIME = 120  -- Сколько секунд работать перед сменой сервера (2 минуты)
 local MIN_PLAYERS = 5  -- Минимум игроков на сервере
 local MAX_PLAYERS = 12  -- Максимум игроков на сервере
 
@@ -93,17 +93,24 @@ local function loadMainScript()
     log("📥 Загружаю MM2 скрипт...")
     notify("📥 Загрузка", "Загружаю MM2 скрипт...")
     
-    local success, err = pcall(function()
-        loadstring(game:HttpGet(SCRIPT_URL))()
+    -- ВАЖНО: Запускаем MM2 в фоне, чтобы не блокировать таймер!
+    spawn(function()
+        wait(1)
+        local success, err = pcall(function()
+            loadstring(game:HttpGet(SCRIPT_URL))()
+        end)
+        
+        if success then
+            log("✅ MM2 скрипт загружен!")
+            notify("✅ Успех", "MM2 скрипт загружен!")
+        else
+            log("❌ Ошибка: " .. tostring(err))
+            notify("❌ Ошибка", "Не удалось загрузить MM2")
+        end
     end)
     
-    if success then
-        log("✅ MM2 скрипт загружен!")
-        notify("✅ Успех", "MM2 скрипт загружен!")
-    else
-        log("❌ Ошибка: " .. tostring(err))
-        notify("❌ Ошибка", "Не удалось загрузить MM2")
-    end
+    -- Сразу возвращаемся, не ждём загрузки
+    notify("🔄 Фон", "MM2 загружается в фоне...")
 end
 
 -- ==================== СМЕНА СЕРВЕРА ====================
@@ -160,11 +167,21 @@ local function serverHop()
                     notify("🚀 Телепорт", selected.playing .. "/" .. selected.maxPlayers .. " игроков")
                     
                     -- Ставим скрипт в очередь
-                    pcall(function()
+                    log("📋 Ставлю скрипт в очередь...")
+                    local queueSuccess = pcall(function()
                         queueFunc('wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
                     end)
+                    if queueSuccess then
+                        log("✅ Скрипт в очереди")
+                        notify("✅ Очередь", "Скрипт в очереди")
+                    else
+                        log("⚠️ Queue не сработал")
+                    end
                     
-                    local tpSuccess = pcall(function()
+                    log("🌐 JobId сервера: " .. tostring(selected.id))
+                    log("🎮 Текущий JobId: " .. tostring(game.JobId))
+                    
+                    local tpSuccess, tpErr = pcall(function()
                         TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
                     end)
                     
@@ -175,7 +192,8 @@ local function serverHop()
                         wait(10)
                         break
                     else
-                        log("❌ Ошибка телепорта")
+                        log("❌ Ошибка телепорта: " .. tostring(tpErr))
+                        notify("❌ Ошибка ТП", tostring(tpErr))
                         wait(2)
                     end
                 else
@@ -225,7 +243,8 @@ spawn(function()
         if elapsed < WORK_TIME then
             local remaining = WORK_TIME - elapsed
             log("⏱️ Осталось: " .. remaining .. "с")
-            if remaining <= 30 then
+            -- Уведомления каждые 30 секунд
+            if remaining % 30 == 0 or remaining <= 30 then
                 notify("⏱️ Таймер", remaining .. " секунд до хопа")
             end
         end
