@@ -118,11 +118,13 @@ local function serverHop()
     log("🔄 Начинаю поиск сервера...")
     notify("🔄 Хоп", "Ищу новый сервер...")
     
+    notify("🔍 Шаг А", "Проверка httprequest...")
     if not httprequest then
         log("❌ httprequest не работает!")
         notify("❌ ОШИБКА", "HTTP не поддерживается!")
         return
     end
+    notify("✅ Шаг А", "HTTP работает!")
     
     local cursor = ""
     local hopped = false
@@ -131,24 +133,38 @@ local function serverHop()
     while not hopped and attempts < 5 do
         attempts = attempts + 1
         log("🔍 Попытка " .. attempts .. "/5")
+        notify("🔍 Попытка", attempts .. "/5")
         
         local url = string.format(
             "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100",
             PLACE_ID
         )
         
+        notify("📡 Шаг Б", "Отправляю HTTP запрос...")
         local success, response = pcall(function()
             return httprequest({Url = url, Method = "GET"})
         end)
         
         if success and response and response.Body then
             log("✅ HTTP ответ получен")
+            notify("✅ Шаг Б", "HTTP ответ получен!")
             
+            notify("📝 Шаг В", "Парсинг JSON...")
             local bodySuccess, body = pcall(function() 
                 return HttpService:JSONDecode(response.Body) 
             end)
             
+            if not bodySuccess then
+                notify("❌ Шаг В", "Ошибка парсинга JSON!")
+                log("❌ JSON error: " .. tostring(body))
+                wait(3)
+                continue
+            end
+            
             if bodySuccess and body and body.data then
+                notify("✅ Шаг В", "JSON распарсен!")
+                
+                notify("🔍 Шаг Г", "Ищу подходящие сервера...")
                 local servers = {}
                 
                 for _, server in pairs(body.data) do
@@ -160,11 +176,13 @@ local function serverHop()
                 end
                 
                 log("✅ Найдено серверов: " .. #servers)
+                notify("✅ Шаг Г", "Найдено: " .. #servers .. " серверов")
                 
                 if #servers > 0 then
+                    notify("🎯 Шаг Д", "Выбираю сервер...")
                     local selected = servers[1]
                     log("🚀 Телепорт на сервер: " .. selected.playing .. "/" .. selected.maxPlayers)
-                    notify("🚀 Телепорт", selected.playing .. "/" .. selected.maxPlayers .. " игроков")
+                    notify("🚀 Шаг Д", selected.playing .. "/" .. selected.maxPlayers .. " игроков")
                     
                     -- Ставим скрипт в очередь
                     log("📋 Ставлю скрипт в очередь...")
@@ -182,6 +200,7 @@ local function serverHop()
                     log("🎮 Текущий JobId: " .. tostring(game.JobId))
                     
                     -- Метод 1: TeleportToPlaceInstance (обычный)
+                    notify("🔄 Метод 1", "TeleportToPlaceInstance...")
                     log("🔄 Метод 1: TeleportToPlaceInstance...")
                     local tpSuccess1, tpErr1 = pcall(function()
                         TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
@@ -189,16 +208,17 @@ local function serverHop()
                     
                     if tpSuccess1 then
                         log("✅ Метод 1 сработал!")
-                        notify("✅ Успех", "Телепортируюсь...")
+                        notify("✅ УСПЕХ!", "Телепортируюсь (метод 1)...")
                         hopped = true
                         wait(10)
                         break
                     else
                         log("❌ Метод 1 не сработал: " .. tostring(tpErr1))
-                        notify("⚠️ Метод 1", "Неудача, пробую метод 2...")
+                        notify("❌ Метод 1", "Пробую метод 2...")
                     end
                     
                     -- Метод 2: TeleportToPlaceInstance с options
+                    notify("🔄 Метод 2", "TeleportAsync...")
                     log("🔄 Метод 2: С TeleportOptions...")
                     wait(1)
                     local tpSuccess2, tpErr2 = pcall(function()
@@ -209,16 +229,17 @@ local function serverHop()
                     
                     if tpSuccess2 then
                         log("✅ Метод 2 сработал!")
-                        notify("✅ Успех", "Телепортируюсь (метод 2)...")
+                        notify("✅ УСПЕХ!", "Телепортируюсь (метод 2)...")
                         hopped = true
                         wait(10)
                         break
                     else
                         log("❌ Метод 2 не сработал: " .. tostring(tpErr2))
-                        notify("⚠️ Метод 2", "Неудача, пробую метод 3...")
+                        notify("❌ Метод 2", "Пробую метод 3...")
                     end
                     
                     -- Метод 3: Обычный Teleport (случайный сервер)
+                    notify("🔄 Метод 3", "Простой Teleport...")
                     log("🔄 Метод 3: Обычный Teleport...")
                     wait(1)
                     local tpSuccess3, tpErr3 = pcall(function()
@@ -227,13 +248,13 @@ local function serverHop()
                     
                     if tpSuccess3 then
                         log("✅ Метод 3 сработал!")
-                        notify("✅ Успех", "Телепортируюсь (случайный сервер)...")
+                        notify("✅ УСПЕХ!", "Телепорт на случайный сервер...")
                         hopped = true
                         wait(10)
                         break
                     else
                         log("❌ Метод 3 не сработал: " .. tostring(tpErr3))
-                        notify("❌ Все методы", "Телепорт заблокирован :(")
+                        notify("❌ ВСЕ МЕТОДЫ", "Телепорт не работает!")
                         wait(2)
                     end
                 else
