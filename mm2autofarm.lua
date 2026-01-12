@@ -149,6 +149,11 @@ local function serverHop()
             log("✅ HTTP ответ получен")
             notify("✅ Шаг Б", "HTTP ответ получен!")
             
+            -- ДЕБАГ: Показываем что пришло
+            local bodyPreview = string.sub(tostring(response.Body), 1, 200)
+            log("📄 Ответ (200 символов): " .. bodyPreview)
+            notify("📄 Ответ", "Первые символы: " .. string.sub(bodyPreview, 1, 30))
+            
             notify("📝 Шаг В", "Парсинг JSON...")
             local bodySuccess, body = pcall(function() 
                 return HttpService:JSONDecode(response.Body) 
@@ -157,6 +162,15 @@ local function serverHop()
             if not bodySuccess then
                 notify("❌ Шаг В", "Ошибка парсинга JSON!")
                 log("❌ JSON error: " .. tostring(body))
+                log("📄 Body type: " .. type(response.Body))
+                log("📄 Body length: " .. #tostring(response.Body))
+                
+                -- Показываем StatusCode если есть
+                if response.StatusCode then
+                    log("📊 StatusCode: " .. tostring(response.StatusCode))
+                    notify("📊 Status", "HTTP код: " .. tostring(response.StatusCode))
+                end
+                
                 wait(3)
                 continue
             end
@@ -259,17 +273,39 @@ local function serverHop()
                     end
                 else
                     log("⚠️ Нет подходящих серверов")
+                    notify("⚠️ Нет серверов", "Попробую через 10 сек...")
+                    wait(10)
                 end
             end
         else
             log("❌ HTTP ошибка")
+            notify("❌ HTTP", "Ошибка запроса")
             wait(3)
         end
     end
     
+    -- Если не удалось найти через API - пробуем простой телепорт
     if not hopped then
-        log("❌ Не удалось найти сервер")
-        notify("❌ Ошибка", "Не удалось сменить сервер")
+        log("⚠️ API не сработал, пробую простой телепорт...")
+        notify("🔄 План Б", "Телепорт на случайный сервер...")
+        
+        local fallbackSuccess = pcall(function()
+            -- Ставим скрипт в очередь
+            pcall(function()
+                queueFunc('wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
+            end)
+            
+            TeleportService:Teleport(PLACE_ID, player)
+        end)
+        
+        if fallbackSuccess then
+            log("✅ Простой телепорт запущен!")
+            notify("✅ План Б", "Телепортируюсь...")
+            wait(10)
+        else
+            log("❌ Не удалось сменить сервер")
+            notify("❌ ОШИБКА", "Телепорт заблокирован :(")
+        end
     end
 end
 
