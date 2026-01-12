@@ -1,6 +1,17 @@
 -- ==================== ПРОСТОЙ АВТОХОП ДЛЯ MM2 ====================
 -- Каждые 30 секунд меняет сервер
 
+-- ЗАЩИТА ОТ ДВОЙНОГО ЗАПУСКА
+if _G.AutoHopRunning then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "⚠️ УЖЕ ЗАПУЩЕН",
+        Text = "Автохоп уже работает!",
+        Duration = 5,
+    })
+    return
+end
+_G.AutoHopRunning = true
+
 local PLACE_ID = 142823291  -- Murder Mystery 2
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
 local AUTOHOP_URL = "https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"
@@ -28,27 +39,32 @@ local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_
 
 -- ==================== СТАРТ ====================
 notify("🟢 АВТОХОП", "Скрипт запущен!")
+notify("🌐 JobId", string.sub(game.JobId, 1, 8) .. "...")
 
 -- Ждём персонажа
 if not player.Character then
+    notify("⏳ Ожидание", "Жду персонажа...")
     player.CharacterAdded:Wait()
 end
-wait(2)
+
+-- Даём игре время полностью загрузиться
+wait(5)
+notify("✅ Загружен", "Персонаж готов!")
 
 -- Загружаем MM2 скрипт в фоне
 notify("📥 MM2", "Загружаю MM2 скрипт...")
 spawn(function()
-    wait(1)
+    wait(3) -- Даём игре стабилизироваться
     pcall(function()
         loadstring(game:HttpGet(SCRIPT_URL))()
     end)
-    wait(3)
+    wait(5)
     notify("✅ MM2", "MM2 скрипт загружен!")
 end)
 
 -- Запускаем таймер автохопа
 spawn(function()
-    wait(5) -- Даём MM2 загрузиться
+    wait(10) -- Даём MM2 полностью загрузиться
     
     notify("⏰ ТАЙМЕР", WORK_TIME .. " секунд до хопа")
     
