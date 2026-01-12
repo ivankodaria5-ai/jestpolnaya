@@ -108,7 +108,16 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
     end
 end)
 
-logGui.Parent = game:GetService("CoreGui")
+-- Пробуем разместить в CoreGui, если не работает - в PlayerGui
+local guiParent = nil
+pcall(function()
+    guiParent = game:GetService("CoreGui")
+end)
+if not guiParent then
+    guiParent = player:WaitForChild("PlayerGui")
+end
+logGui.Parent = guiParent
+log("✅ GUI создан!")
 
 local logLines = {}
 local MAX_LOG_LINES = 50
@@ -126,32 +135,34 @@ local function log(msg)
     
     logText.Text = table.concat(logLines, "\n")
     
-    -- Автопрокрутка вниз
-    task.wait()
-    logScroll.CanvasPosition = Vector2.new(0, logText.TextBounds.Y)
-    logScroll.CanvasSize = UDim2.new(0, 0, 0, logText.TextBounds.Y + 10)
+    -- Автопрокрутка вниз (безопасно для мобильного)
+    spawn(function()
+        wait(0.1)
+        pcall(function()
+            logScroll.CanvasSize = UDim2.new(0, 0, 0, logText.TextBounds.Y + 10)
+            logScroll.CanvasPosition = Vector2.new(0, logText.TextBounds.Y)
+        end)
+    end)
 end
 
 -- ==================== ЗАГРУЗКА ОСНОВНОГО СКРИПТА ====================
 local function loadMainScript()
-    log("Загружаю Murder Mystery 2 скрипт...")
+    log("📥 Загружаю Murder Mystery 2 скрипт...")
+    log("🌐 URL: " .. SCRIPT_URL)
     
-    -- ВАЖНО: Запускаем скрипт АСИНХРОННО, чтобы он не блокировал автохоп
-    task.spawn(function()
-        local success, err = pcall(function()
-            loadstring(game:HttpGet(SCRIPT_URL))()
-        end)
-        
-        if success then
-            log("✅ Скрипт Murder Mystery 2 загружен!")
-        else
-            log("❌ Ошибка загрузки: " .. tostring(err))
-        end
+    local success, err = pcall(function()
+        local scriptCode = game:HttpGet(SCRIPT_URL)
+        log("✅ Скрипт скачан! Размер: " .. #scriptCode .. " байт")
+        log("🚀 Запускаю MM2 скрипт...")
+        loadstring(scriptCode)()
     end)
     
-    -- Даем скрипту время загрузиться
-    task.wait(3)
-    log("✅ Основной скрипт запущен в фоне!")
+    if success then
+        log("✅ Скрипт Murder Mystery 2 загружен!")
+    else
+        log("❌ Ошибка загрузки MM2:")
+        log(tostring(err))
+    end
 end
 
 -- ==================== СМЕНА СЕРВЕРА ====================
@@ -187,25 +198,25 @@ local function serverHop()
         
         if not success then
             log("❌ Ошибка HTTP: " .. tostring(response))
-            task.wait(3)
+            wait(3)
             continue
         end
         
         if not response then
             log("❌ Пустой ответ от сервера")
-            task.wait(3)
+            wait(3)
             continue
         end
         
         if not response.Body then
             log("❌ Ответ без Body")
             log("📋 Response тип: " .. type(response))
-            task.wait(3)
+            wait(3)
             continue
         end
         
         log("✅ HTTP ответ получен!")
-        
+
         log("📝 Парсинг JSON...")
         local bodySuccess, body = pcall(function() 
             return HttpService:JSONDecode(response.Body) 
@@ -213,14 +224,14 @@ local function serverHop()
         
         if not bodySuccess then
             log("❌ Ошибка парсинга JSON: " .. tostring(body))
-            task.wait(3)
+            wait(3)
             cursor = ""
             continue
         end
         
         if not body or not body.data then
             log("❌ Нет данных в ответе")
-            task.wait(3)
+            wait(3)
             cursor = ""
             continue
         end
@@ -266,12 +277,12 @@ local function serverHop()
                     log("✅ Телепорт начат!")
                     log("👋 Увидимся на новом сервере...")
                     hopped = true
-                    task.wait(10)
+                    wait(10)
                     break
                 else
                     log("❌ Ошибка телепорта: " .. tostring(tpErr))
                     log("⏭️  Пробую следующий сервер...")
-                    task.wait(2)
+                    wait(2)
                 end
             end
         else
@@ -286,13 +297,13 @@ local function serverHop()
             else
                 if not hopped then
                     log("Все страницы проверены. Повтор через 10 секунд...")
-                    task.wait(10)
+                    wait(10)
                     cursor = ""
                 end
             end
         else
             log("Ошибка парсинга ответа")
-            task.wait(3)
+            wait(3)
             cursor = ""
         end
     end
@@ -310,9 +321,9 @@ hopButton.MouseButton1Click:Connect(function()
         hopButton.Text = "⏳ ЖДУ..."
         hopButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         log("🎮 РУЧНОЙ ХОП ЗАПУЩЕН!")
-        task.spawn(function()
+        spawn(function()
             serverHop()
-            task.wait(5)
+            wait(5)
             manualHopEnabled = true
             hopButton.Text = "🚀 ХОП СЕЙЧАС"
             hopButton.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
@@ -371,27 +382,33 @@ checkFunctions()
 if not player.Character then
     player.CharacterAdded:Wait()
 end
-task.wait(2)
+wait(2)
 
--- Загружаем основной скрипт
-loadMainScript()
-
--- Ждем указанное время с отчетом каждые 10 секунд
-log("⏳ Работаю " .. WORK_TIME .. " секунд перед сменой сервера...")
-local elapsed = 0
-while elapsed < WORK_TIME do
-    task.wait(10)
-    elapsed = elapsed + 10
-    if elapsed < WORK_TIME then
-        local remaining = WORK_TIME - elapsed
-        log("⏱️  Осталось " .. remaining .. " секунд до смены сервера...")
+-- Запускаем АВТОХОП ТАЙМЕР в фоне
+spawn(function()
+    wait(2) -- Даем MM2 скрипту время загрузиться
+    log("⏰ Таймер автохопа запущен в фоне!")
+    log("⏳ Работаю " .. WORK_TIME .. " секунд перед сменой сервера...")
+    
+    local elapsed = 0
+    while elapsed < WORK_TIME do
+        wait(10)
+        elapsed = elapsed + 10
+        if elapsed < WORK_TIME then
+            local remaining = WORK_TIME - elapsed
+            log("⏱️  Осталось " .. remaining .. " секунд до смены сервера...")
+        end
     end
-end
+    
+    -- Меняем сервер
+    log("⏰ Время вышло! Меняю сервер...")
+    serverHop()
+    
+    log("════════════════════════════════════════")
+    log("  АВТОХОП ЗАВЕРШЕН")
+    log("════════════════════════════════════════")
+end)
 
--- Меняем сервер
-log("⏰ Время вышло! Меняю сервер...")
-serverHop()
-
-log("════════════════════════════════════════")
-log("  СКРИПТ ЗАВЕРШЕН")
-log("════════════════════════════════════════")
+-- Загружаем основной MM2 скрипт (он должен работать нормально)
+wait(1)
+loadMainScript()
