@@ -1,16 +1,25 @@
 -- ==================== ПРОСТОЙ АВТОХОП ДЛЯ MM2 ====================
--- Каждые 30 секунд меняет сервер
+-- Версия 2.0 - БЕЗ MM2 для теста
+
+local VERSION = "2.0-ТЕСТ"
+
+-- ОЧИСТКА СТАРЫХ ДАННЫХ
+_G.AutoHopRunning = nil
+_G.AutoHopVersion = nil
+
+wait(1)
 
 -- ЗАЩИТА ОТ ДВОЙНОГО ЗАПУСКА
 if _G.AutoHopRunning then
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "⚠️ УЖЕ ЗАПУЩЕН",
-        Text = "Автохоп уже работает!",
+        Text = "Версия: " .. (_G.AutoHopVersion or "???"),
         Duration = 5,
     })
     return
 end
 _G.AutoHopRunning = true
+_G.AutoHopVersion = VERSION
 
 local PLACE_ID = 142823291  -- Murder Mystery 2
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
@@ -39,8 +48,10 @@ end
 local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_teleport)
 
 -- ==================== СТАРТ ====================
-notify("🟢 АВТОХОП", "Скрипт запущен!")
+notify("🟢 АВТОХОП v" .. VERSION, "Скрипт запущен!")
 notify("🌐 JobId", string.sub(game.JobId, 1, 8) .. "...")
+wait(1)
+notify("📋 Версия", VERSION .. " (БЕЗ MM2)")
 
 -- Ждём персонажа
 if not player.Character then
