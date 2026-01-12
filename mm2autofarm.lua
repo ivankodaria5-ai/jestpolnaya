@@ -1,3 +1,6 @@
+-- Обернём весь скрипт в pcall для отлова ошибок
+local success, error = pcall(function()
+
 -- ==================== КОНФИГУРАЦИЯ ====================
 local PLACE_ID = 142823291  -- Murder Mystery 2 Place ID
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
@@ -13,9 +16,28 @@ local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
+-- Первое уведомление - скрипт запустился
+StarterGui:SetCore("SendNotification", {
+    Title = "🟢 СТАРТ",
+    Text = "Скрипт начал работу!",
+    Duration = 5,
+})
+
 -- ==================== ПОДДЕРЖКА РАЗНЫХ ЭКСПЛОЙТОВ ====================
+StarterGui:SetCore("SendNotification", {
+    Title = "🔍 Шаг 1",
+    Text = "Проверка эксплойта...",
+    Duration = 3,
+})
+
 local httprequest = (syn and syn.request) or http and http.request or http_request or (fluxus and fluxus.request) or request
 local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_teleport) or function() end
+
+StarterGui:SetCore("SendNotification", {
+    Title = "✅ Шаг 1",
+    Text = "Эксплойт проверен!",
+    Duration = 3,
+})
 
 -- ==================== ПРОСТОЕ ЛОГИРОВАНИЕ ====================
 local function notify(title, text)
@@ -32,6 +54,12 @@ end
 local function log(msg)
     print("[АВТОХОП] " .. msg)
 end
+
+StarterGui:SetCore("SendNotification", {
+    Title = "🔍 Шаг 2",
+    Text = "Функции созданы",
+    Duration = 3,
+})
 
 -- ==================== НАЧАЛЬНАЯ ПРОВЕРКА ====================
 notify("🔄 АВТОХОП", "Скрипт загружен!")
@@ -167,16 +195,24 @@ local function serverHop()
 end
 
 -- ==================== ГЛАВНЫЙ ЦИКЛ ====================
+notify("🔍 Шаг 3", "Проверка персонажа...")
+
 -- Ждем загрузки персонажа
 if not player.Character then
+    notify("⏳ Ожидание", "Жду персонажа...")
     player.CharacterAdded:Wait()
 end
 wait(2)
 
+notify("✅ Шаг 3", "Персонаж загружен!")
+
 -- Загружаем MM2 скрипт
+notify("🔍 Шаг 4", "Загрузка MM2...")
 loadMainScript()
+notify("✅ Шаг 4", "MM2 загружен!")
 
 -- Запускаем таймер в фоне
+notify("🔍 Шаг 5", "Запуск таймера...")
 spawn(function()
     wait(3)
     log("⏰ Таймер: " .. WORK_TIME .. " секунд")
@@ -202,3 +238,15 @@ end)
 
 log("✅ Автохоп запущен!")
 notify("✅ Запущен", "Автохоп работает!")
+
+end) -- Конец pcall
+
+-- Если была ошибка - покажем её
+if not success then
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "❌ ОШИБКА",
+        Text = "Ошибка: " .. tostring(error),
+        Duration = 10,
+    })
+    print("[АВТОХОП] КРИТИЧЕСКАЯ ОШИБКА: " .. tostring(error))
+end
