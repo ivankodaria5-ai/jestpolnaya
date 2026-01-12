@@ -1,45 +1,18 @@
--- Обернём весь скрипт в pcall для отлова ошибок
-local success, error = pcall(function()
+-- ==================== ПРОСТОЙ АВТОХОП ДЛЯ MM2 ====================
+-- Каждые 30 секунд меняет сервер
 
--- ==================== КОНФИГУРАЦИЯ ====================
-local PLACE_ID = 142823291  -- Murder Mystery 2 Place ID
+local PLACE_ID = 142823291  -- Murder Mystery 2
 local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
 local AUTOHOP_URL = "https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"
-local WORK_TIME = 120  -- Сколько секунд работать перед сменой сервера (2 минуты)
-local MIN_PLAYERS = 5  -- Минимум игроков на сервере
-local MAX_PLAYERS = 12  -- Максимум игроков на сервере
+local WORK_TIME = 30  -- 30 секунд перед хопом
 
--- ==================== СЕРВИСЫ ====================
+-- Сервисы
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local player = Players.LocalPlayer
 
--- Первое уведомление - скрипт запустился
-StarterGui:SetCore("SendNotification", {
-    Title = "🟢 СТАРТ",
-    Text = "Скрипт начал работу!",
-    Duration = 5,
-})
-
--- ==================== ПОДДЕРЖКА РАЗНЫХ ЭКСПЛОЙТОВ ====================
-StarterGui:SetCore("SendNotification", {
-    Title = "🔍 Шаг 1",
-    Text = "Проверка эксплойта...",
-    Duration = 3,
-})
-
-local httprequest = (syn and syn.request) or http and http.request or http_request or (fluxus and fluxus.request) or request
-local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_teleport) or function() end
-
-StarterGui:SetCore("SendNotification", {
-    Title = "✅ Шаг 1",
-    Text = "Эксплойт проверен!",
-    Duration = 3,
-})
-
--- ==================== ПРОСТОЕ ЛОГИРОВАНИЕ ====================
+-- Функция уведомлений
 local function notify(title, text)
     pcall(function()
         StarterGui:SetCore("SendNotification", {
@@ -48,321 +21,78 @@ local function notify(title, text)
             Duration = 5,
         })
     end)
-    print("[АВТОХОП] " .. title .. ": " .. text)
 end
 
-local function log(msg)
-    print("[АВТОХОП] " .. msg)
-end
+-- Функция для постановки скрипта в очередь
+local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_teleport)
 
-StarterGui:SetCore("SendNotification", {
-    Title = "🔍 Шаг 2",
-    Text = "Функции созданы",
-    Duration = 3,
-})
+-- ==================== СТАРТ ====================
+notify("🟢 АВТОХОП", "Скрипт запущен!")
 
--- ==================== НАЧАЛЬНАЯ ПРОВЕРКА ====================
-notify("🔄 АВТОХОП", "Скрипт загружен!")
-log("════════════════════════════════════════")
-log("  АВТОМАТИЧЕСКИЙ СЕРВЕР-ХОППЕР")
-log("  Murder Mystery 2 - Мобильная версия")
-log("════════════════════════════════════════")
-
--- Проверка функций
-log("🔍 Проверка поддержки функций...")
-if httprequest then
-    log("✅ httprequest работает")
-    notify("✅ Проверка", "httprequest работает")
-else
-    log("❌ httprequest НЕ работает!")
-    notify("❌ ОШИБКА", "httprequest не поддерживается!")
-end
-
-if queueonteleport or queue_on_teleport then
-    log("✅ queueonteleport работает")
-else
-    log("⚠️ queueonteleport НЕ работает")
-    notify("⚠️ Внимание", "Автозапуск может не работать")
-end
-
-log("🎮 JobId: " .. tostring(game.JobId))
-log("👥 Игроков: " .. #Players:GetPlayers())
-
--- ==================== ЗАГРУЗКА MM2 СКРИПТА ====================
-local function loadMainScript()
-    log("📥 Загружаю MM2 скрипт...")
-    notify("📥 Загрузка", "Загружаю MM2 скрипт...")
-    
-    -- ВАЖНО: Запускаем MM2 в фоне, чтобы не блокировать таймер!
-    spawn(function()
-        wait(1)
-        local success, err = pcall(function()
-            loadstring(game:HttpGet(SCRIPT_URL))()
-        end)
-        
-        if success then
-            log("✅ MM2 скрипт загружен!")
-            notify("✅ Успех", "MM2 скрипт загружен!")
-        else
-            log("❌ Ошибка: " .. tostring(err))
-            notify("❌ Ошибка", "Не удалось загрузить MM2")
-        end
-    end)
-    
-    -- Сразу возвращаемся, не ждём загрузки
-    notify("🔄 Фон", "MM2 загружается в фоне...")
-end
-
--- ==================== СМЕНА СЕРВЕРА ====================
-local function serverHop()
-    log("🔄 Начинаю поиск сервера...")
-    notify("🔄 Хоп", "Ищу новый сервер...")
-    
-    notify("🔍 Шаг А", "Проверка httprequest...")
-    if not httprequest then
-        log("❌ httprequest не работает!")
-        notify("❌ ОШИБКА", "HTTP не поддерживается!")
-        return
-    end
-    notify("✅ Шаг А", "HTTP работает!")
-    
-    local cursor = ""
-    local hopped = false
-    local attempts = 0
-    
-    while not hopped and attempts < 5 do
-        attempts = attempts + 1
-        log("🔍 Попытка " .. attempts .. "/5")
-        notify("🔍 Попытка", attempts .. "/5")
-        
-        local url = string.format(
-            "https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100",
-            PLACE_ID
-        )
-        
-        notify("📡 Шаг Б", "Отправляю HTTP запрос...")
-        local success, response = pcall(function()
-            return httprequest({Url = url, Method = "GET"})
-        end)
-        
-        if success and response and response.Body then
-            log("✅ HTTP ответ получен")
-            notify("✅ Шаг Б", "HTTP ответ получен!")
-            
-            -- ДЕБАГ: Показываем что пришло
-            local bodyPreview = string.sub(tostring(response.Body), 1, 200)
-            log("📄 Ответ (200 символов): " .. bodyPreview)
-            notify("📄 Ответ", "Первые символы: " .. string.sub(bodyPreview, 1, 30))
-            
-            notify("📝 Шаг В", "Парсинг JSON...")
-            local bodySuccess, body = pcall(function() 
-                return HttpService:JSONDecode(response.Body) 
-            end)
-            
-            if not bodySuccess then
-                notify("❌ Шаг В", "Ошибка парсинга JSON!")
-                log("❌ JSON error: " .. tostring(body))
-                log("📄 Body type: " .. type(response.Body))
-                log("📄 Body length: " .. #tostring(response.Body))
-                
-                -- Показываем StatusCode если есть
-                if response.StatusCode then
-                    log("📊 StatusCode: " .. tostring(response.StatusCode))
-                    notify("📊 Status", "HTTP код: " .. tostring(response.StatusCode))
-                end
-                
-                wait(3)
-                continue
-            end
-            
-            if bodySuccess and body and body.data then
-                notify("✅ Шаг В", "JSON распарсен!")
-                
-                notify("🔍 Шаг Г", "Ищу подходящие сервера...")
-                local servers = {}
-                
-                for _, server in pairs(body.data) do
-                    if server.id ~= game.JobId 
-                        and server.playing >= MIN_PLAYERS 
-                        and server.playing <= MAX_PLAYERS then
-                        table.insert(servers, server)
-                    end
-                end
-                
-                log("✅ Найдено серверов: " .. #servers)
-                notify("✅ Шаг Г", "Найдено: " .. #servers .. " серверов")
-                
-                if #servers > 0 then
-                    notify("🎯 Шаг Д", "Выбираю сервер...")
-                    local selected = servers[1]
-                    log("🚀 Телепорт на сервер: " .. selected.playing .. "/" .. selected.maxPlayers)
-                    notify("🚀 Шаг Д", selected.playing .. "/" .. selected.maxPlayers .. " игроков")
-                    
-                    -- Ставим скрипт в очередь
-                    log("📋 Ставлю скрипт в очередь...")
-                    local queueSuccess = pcall(function()
-                        queueFunc('wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
-                    end)
-                    if queueSuccess then
-                        log("✅ Скрипт в очереди")
-                        notify("✅ Очередь", "Скрипт в очереди")
-                    else
-                        log("⚠️ Queue не сработал")
-                    end
-                    
-                    log("🌐 JobId сервера: " .. tostring(selected.id))
-                    log("🎮 Текущий JobId: " .. tostring(game.JobId))
-                    
-                    -- Метод 1: TeleportToPlaceInstance (обычный)
-                    notify("🔄 Метод 1", "TeleportToPlaceInstance...")
-                    log("🔄 Метод 1: TeleportToPlaceInstance...")
-                    local tpSuccess1, tpErr1 = pcall(function()
-                        TeleportService:TeleportToPlaceInstance(PLACE_ID, selected.id, player)
-                    end)
-                    
-                    if tpSuccess1 then
-                        log("✅ Метод 1 сработал!")
-                        notify("✅ УСПЕХ!", "Телепортируюсь (метод 1)...")
-                        hopped = true
-                        wait(10)
-                        break
-                    else
-                        log("❌ Метод 1 не сработал: " .. tostring(tpErr1))
-                        notify("❌ Метод 1", "Пробую метод 2...")
-                    end
-                    
-                    -- Метод 2: TeleportToPlaceInstance с options
-                    notify("🔄 Метод 2", "TeleportAsync...")
-                    log("🔄 Метод 2: С TeleportOptions...")
-                    wait(1)
-                    local tpSuccess2, tpErr2 = pcall(function()
-                        local options = Instance.new("TeleportOptions")
-                        options.ServerInstanceId = selected.id
-                        TeleportService:TeleportAsync(PLACE_ID, {player}, options)
-                    end)
-                    
-                    if tpSuccess2 then
-                        log("✅ Метод 2 сработал!")
-                        notify("✅ УСПЕХ!", "Телепортируюсь (метод 2)...")
-                        hopped = true
-                        wait(10)
-                        break
-                    else
-                        log("❌ Метод 2 не сработал: " .. tostring(tpErr2))
-                        notify("❌ Метод 2", "Пробую метод 3...")
-                    end
-                    
-                    -- Метод 3: Обычный Teleport (случайный сервер)
-                    notify("🔄 Метод 3", "Простой Teleport...")
-                    log("🔄 Метод 3: Обычный Teleport...")
-                    wait(1)
-                    local tpSuccess3, tpErr3 = pcall(function()
-                        TeleportService:Teleport(PLACE_ID, player)
-                    end)
-                    
-                    if tpSuccess3 then
-                        log("✅ Метод 3 сработал!")
-                        notify("✅ УСПЕХ!", "Телепорт на случайный сервер...")
-                        hopped = true
-                        wait(10)
-                        break
-                    else
-                        log("❌ Метод 3 не сработал: " .. tostring(tpErr3))
-                        notify("❌ ВСЕ МЕТОДЫ", "Телепорт не работает!")
-                        wait(2)
-                    end
-                else
-                    log("⚠️ Нет подходящих серверов")
-                    notify("⚠️ Нет серверов", "Попробую через 10 сек...")
-                    wait(10)
-                end
-            end
-        else
-            log("❌ HTTP ошибка")
-            notify("❌ HTTP", "Ошибка запроса")
-            wait(3)
-        end
-    end
-    
-    -- Если не удалось найти через API - пробуем простой телепорт
-    if not hopped then
-        log("⚠️ API не сработал, пробую простой телепорт...")
-        notify("🔄 План Б", "Телепорт на случайный сервер...")
-        
-        local fallbackSuccess = pcall(function()
-            -- Ставим скрипт в очередь
-            pcall(function()
-                queueFunc('wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
-            end)
-            
-            TeleportService:Teleport(PLACE_ID, player)
-        end)
-        
-        if fallbackSuccess then
-            log("✅ Простой телепорт запущен!")
-            notify("✅ План Б", "Телепортируюсь...")
-            wait(10)
-        else
-            log("❌ Не удалось сменить сервер")
-            notify("❌ ОШИБКА", "Телепорт заблокирован :(")
-        end
-    end
-end
-
--- ==================== ГЛАВНЫЙ ЦИКЛ ====================
-notify("🔍 Шаг 3", "Проверка персонажа...")
-
--- Ждем загрузки персонажа
+-- Ждём персонажа
 if not player.Character then
-    notify("⏳ Ожидание", "Жду персонажа...")
     player.CharacterAdded:Wait()
 end
 wait(2)
 
-notify("✅ Шаг 3", "Персонаж загружен!")
-
--- Загружаем MM2 скрипт
-notify("🔍 Шаг 4", "Загрузка MM2...")
-loadMainScript()
-notify("✅ Шаг 4", "MM2 загружен!")
-
--- Запускаем таймер в фоне
-notify("🔍 Шаг 5", "Запуск таймера...")
+-- Загружаем MM2 скрипт в фоне
+notify("📥 MM2", "Загружаю MM2 скрипт...")
 spawn(function()
+    wait(1)
+    pcall(function()
+        loadstring(game:HttpGet(SCRIPT_URL))()
+    end)
     wait(3)
-    log("⏰ Таймер: " .. WORK_TIME .. " секунд")
-    notify("⏰ Таймер", WORK_TIME .. " секунд до хопа")
-    
-    local elapsed = 0
-    while elapsed < WORK_TIME do
-        wait(10)
-        elapsed = elapsed + 10
-        if elapsed < WORK_TIME then
-            local remaining = WORK_TIME - elapsed
-            log("⏱️ Осталось: " .. remaining .. "с")
-            -- Уведомления каждые 30 секунд
-            if remaining % 30 == 0 or remaining <= 30 then
-                notify("⏱️ Таймер", remaining .. " секунд до хопа")
-            end
-        end
-    end
-    
-    log("⏰ Время вышло! Меняю сервер...")
-    notify("⏰ Время вышло", "Меняю сервер...")
-    serverHop()
+    notify("✅ MM2", "MM2 скрипт загружен!")
 end)
 
-log("✅ Автохоп запущен!")
-notify("✅ Запущен", "Автохоп работает!")
+-- Запускаем таймер автохопа
+spawn(function()
+    wait(5) -- Даём MM2 загрузиться
+    
+    notify("⏰ ТАЙМЕР", WORK_TIME .. " секунд до хопа")
+    
+    -- Отсчёт
+    for i = WORK_TIME, 0, -10 do
+        if i > 0 and i <= 30 then
+            notify("⏱️ " .. i .. " сек", "До смены сервера...")
+        end
+        wait(10)
+    end
+    
+    -- Меняем сервер
+    notify("🔄 ХОП", "Меняю сервер...")
+    
+    -- Ставим скрипт в очередь для следующего сервера
+    if queueFunc then
+        pcall(function()
+            queueFunc('wait(3); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
+        end)
+        notify("✅ Очередь", "Скрипт в очереди!")
+    else
+        notify("⚠️ Очередь", "Queue не поддерживается")
+    end
+    
+    wait(2)
+    
+    -- ТЕЛЕПОРТ на случайный сервер
+    local tpSuccess = pcall(function()
+        TeleportService:Teleport(PLACE_ID, player)
+    end)
+    
+    if tpSuccess then
+        notify("✅ ТЕЛЕПОРТ", "Телепортируюсь!")
+    else
+        notify("❌ ОШИБКА", "Телепорт не работает")
+        
+        -- Пробуем альтернативный способ
+        wait(2)
+        notify("🔄 План Б", "Пробую другой метод...")
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(PLACE_ID, game.JobId, player)
+        end)
+    end
+end)
 
-end) -- Конец pcall
-
--- Если была ошибка - покажем её
-if not success then
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "❌ ОШИБКА",
-        Text = "Ошибка: " .. tostring(error),
-        Duration = 10,
-    })
-    print("[АВТОХОП] КРИТИЧЕСКАЯ ОШИБКА: " .. tostring(error))
-end
+notify("✅ ГОТОВО", "Автохоп работает!")
+print("[АВТОХОП] Скрипт запущен! Хоп через " .. WORK_TIME .. " секунд")
