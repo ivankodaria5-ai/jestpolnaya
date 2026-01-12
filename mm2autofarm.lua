@@ -1,21 +1,20 @@
 -- ==================== ПРОСТОЙ АВТОХОП ДЛЯ MM2 ====================
--- Версия 2.1 - Фикс queueonteleport
+-- Версия 2.2 - Тест queue
 
-local VERSION = "2.1-ФИКС"
+local VERSION = "2.2-ТЕСТ"
 
--- САМОЕ ПЕРВОЕ УВЕДОМЛЕНИЕ (до всех проверок!)
+-- САМОЕ ПЕРВОЕ УВЕДОМЛЕНИЕ
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "🔵 QUEUE РАБОТАЕТ!",
-        Text = "Версия: " .. VERSION,
+        Title = "🔵 QUEUE v" .. VERSION,
+        Text = "Код в queue выполнился!",
         Duration = 10,
     })
 end)
 
--- ОЧИСТКА СТАРЫХ ДАННЫХ
+-- ОЧИСТКА
 _G.AutoHopRunning = nil
 _G.AutoHopVersion = nil
-
 wait(1)
 
 -- ЗАЩИТА ОТ ДВОЙНОГО ЗАПУСКА
@@ -30,11 +29,9 @@ end
 _G.AutoHopRunning = true
 _G.AutoHopVersion = VERSION
 
-local PLACE_ID = 142823291  -- Murder Mystery 2
-local SCRIPT_URL = "https://raw.githubusercontent.com/Azura83/Murder-Mystery-2/refs/heads/main/Script.lua"
+local PLACE_ID = 142823291
 local AUTOHOP_URL = "https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"
-local WORK_TIME = 30  -- 30 секунд перед хопом
-local LOAD_MM2 = false  -- ВРЕМЕННО ВЫКЛЮЧАЕМ MM2 для теста
+local WORK_TIME = 30
 
 -- Сервисы
 local Players = game:GetService("Players")
@@ -53,44 +50,24 @@ local function notify(title, text)
     end)
 end
 
--- Функция для постановки скрипта в очередь
+-- Queue функция
 local queueFunc = queueonteleport or queue_on_teleport or (syn and syn.queue_on_teleport)
 
 -- ==================== СТАРТ ====================
 notify("🟢 v" .. VERSION, "Автохоп запущен!")
 notify("🌐 JobId", string.sub(game.JobId, 1, 8) .. "...")
-wait(1)
-notify("📋 Тест", "БЕЗ MM2, queue фикс")
 
 -- Ждём персонажа
 if not player.Character then
     notify("⏳ Ожидание", "Жду персонажа...")
     player.CharacterAdded:Wait()
 end
-
--- Даём игре время полностью загрузиться
 wait(5)
 notify("✅ Загружен", "Персонаж готов!")
 
--- Загружаем MM2 скрипт в фоне (если включено)
-if LOAD_MM2 then
-    notify("📥 MM2", "Загружаю MM2 скрипт...")
-    spawn(function()
-        wait(3)
-        pcall(function()
-            loadstring(game:HttpGet(SCRIPT_URL))()
-        end)
-        wait(5)
-        notify("✅ MM2", "MM2 скрипт загружен!")
-    end)
-else
-    notify("⚠️ MM2", "MM2 выключен для теста!")
-end
-
--- Запускаем таймер автохопа
+-- Запускаем таймер
 spawn(function()
-    wait(5) -- Уменьшаем ожидание т.к. MM2 выключен
-    
+    wait(5)
     notify("⏰ ТАЙМЕР", WORK_TIME .. " секунд до хопа")
     
     -- Отсчёт
@@ -104,38 +81,34 @@ spawn(function()
     -- Меняем сервер
     notify("🔄 ХОП", "Меняю сервер...")
     
-    -- Ставим скрипт в очередь для следующего сервера
-    notify("📋 Queue", "Проверка поддержки...")
-    
+    -- ТЕСТИРУЕМ QUEUE
     if queueFunc then
         notify("✅ Queue", "Поддерживается!")
         
-        -- Пробуем все возможные варианты
-        pcall(function()
-            queueFunc('wait(5); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
-        end)
+        -- ПРОСТОЙ КОД ДЛЯ ТЕСТА
+        local testCode = [[
+            wait(3)
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "✅ QUEUE OK!",
+                Text = "Код в queue сработал!",
+                Duration = 10,
+            })
+            wait(2)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/ivankodaria5-ai/jestpolnaya/refs/heads/main/mm2autofarm.lua"))()
+        ]]
         
         pcall(function()
-            if queueonteleport then
-                queueonteleport('wait(5); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
-            end
+            queueFunc(testCode)
         end)
         
-        pcall(function()
-            if queue_on_teleport then
-                queue_on_teleport('wait(5); loadstring(game:HttpGet("' .. AUTOHOP_URL .. '"))()')
-            end
-        end)
-        
-        notify("✅ Очередь", "Скрипт в очереди (x3)!")
+        notify("✅ Очередь", "Тестовый код в очереди!")
     else
-        notify("❌ Очередь", "Queue НЕ поддерживается!")
-        notify("⚠️ Внимание", "Автозапуск не будет работать!")
+        notify("❌ Queue", "НЕ поддерживается!")
     end
     
     wait(2)
     
-    -- ТЕЛЕПОРТ на случайный сервер
+    -- ТЕЛЕПОРТ
     local tpSuccess = pcall(function()
         TeleportService:Teleport(PLACE_ID, player)
     end)
@@ -144,15 +117,8 @@ spawn(function()
         notify("✅ ТЕЛЕПОРТ", "Телепортируюсь!")
     else
         notify("❌ ОШИБКА", "Телепорт не работает")
-        
-        -- Пробуем альтернативный способ
-        wait(2)
-        notify("🔄 План Б", "Пробую другой метод...")
-        pcall(function()
-            TeleportService:TeleportToPlaceInstance(PLACE_ID, game.JobId, player)
-        end)
     end
 end)
 
 notify("✅ ГОТОВО", "Автохоп работает!")
-print("[АВТОХОП] Скрипт запущен! Хоп через " .. WORK_TIME .. " секунд")
+print("[АВТОХОП] v" .. VERSION .. " запущен!")
